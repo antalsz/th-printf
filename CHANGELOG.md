@@ -5,6 +5,8 @@
   appropriate.  The new `%S` format specifier accepts only `String`s.  The `%s`
   specifier comes with a new `PrintfString` type class to categorize acceptable
   input types, and provides a way for the end-user to instantiate it.
+- String gaps (e.g., `"\ \"`) are now supported, as are occurrences of `\&` at
+  the start of quasiquoted strings.
 
 ## 0.8.0 (2023-07-16)
 

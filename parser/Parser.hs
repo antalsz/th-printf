@@ -7,8 +7,6 @@
 module Parser where
 
 import Control.Applicative hiding ((<|>))
-import Control.Monad (when)
-import Control.Monad.Fix
 import Control.Monad.RWS
 import Data.Char
 import Data.CharSet hiding (map)
@@ -17,20 +15,34 @@ import qualified Data.Set as S
 import Lens.Micro.Platform
 import Parser.Types
 import Text.Parsec hiding (many)
-import Text.ParserCombinators.ReadP (readP_to_S)
+import Text.ParserCombinators.ReadP (ReadP (), readP_to_S)
+import qualified Text.ParserCombinators.ReadP as ReadP
 import Text.Read.Lex (lexChar)
 
 type Warning = String
 
+-- Skips @\&@ and @\ \@ gaps; the former will be skipped after characters by
+-- 'lexChar', but not initially, and thus not after gaps
+consumeGaps :: ReadP ()
+consumeGaps = do
+  rest <- ReadP.look
+  case rest of
+    '\\':'&':_ ->
+      ReadP.string "\\&" *> consumeGaps
+    '\\':c:_
+      | isSpace c ->
+          ReadP.string ['\\', c] *> ReadP.munch isSpace *> ReadP.char '\\' *> consumeGaps
+    _ -> pure ()
+
+lexStringBody :: ReadP String
+lexStringBody = consumeGaps *> ReadP.manyTill (lexChar <* consumeGaps) ReadP.eof
+
 parseStr :: String -> Either ParseError ([Atom], [[Warning]])
-parseStr = fmap (unzip . map normalizeAndWarn) . parse printfStr "" . lexChars
+parseStr = fmap (unzip . map normalizeAndWarn) . parse printfStr "" . readStringBody
  where
-  lexChars x = (`fix` x) $ \f s ->
-    if Prelude.null s
-      then []
-      else case readP_to_S lexChar s of
-        ((c, rest) : _) -> c : f rest
-        [] -> error "malformed input"
+  readStringBody s = case readP_to_S lexStringBody s of
+    [(str, "")] -> str
+    _ -> error "malformed input"
 
 normalizeAndWarn :: Atom -> (Atom, [Warning])
 normalizeAndWarn s@Str{} = (s, [])
