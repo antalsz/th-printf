@@ -79,6 +79,8 @@ instance Buf SizedBuilder where
   lText a = Sized (T.fromLazyText a, fromIntegral (L.length a))
   singleton c = Sized (T.singleton c, 1)
   digit c = Sized (T.hexadecimal c, 1)
+  cons c (Sized (buf, sz)) = Sized (T.singleton c <> buf, sz + 1)
+  repeatN n c = Sized (T.fromLazyText (L.replicate (fromIntegral n) $ L.singleton c), n)
   finalize = T.toLazyText . fst . unSized
   size = snd . unSized
 
@@ -89,5 +91,7 @@ instance Buf SizedStrictBuilder where
   lText = coerce $ lText @SizedBuilder
   singleton = coerce $ singleton @SizedBuilder
   digit = coerce $ digit @SizedBuilder
+  cons = coerce $ cons @SizedBuilder
+  repeatN = coerce $ repeatN @SizedBuilder
   finalize = L.toStrict . coerce (finalize @SizedBuilder)
   size = coerce $ size @SizedBuilder

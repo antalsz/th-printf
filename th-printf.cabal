@@ -7,7 +7,7 @@ cabal-version: 1.12
 -- hash: 7e86d199e67bceb4c613b25421b603adc41dcb4508283966e741b036d0075e3d
 
 name:           th-printf
-version:        0.8
+version:        0.9
 synopsis:       Quasiquoters for printf
 description:    Quasiquoters for string and text printf
 category:       Text
@@ -46,6 +46,7 @@ library
       Parser
       Parser.Types
       Paths_th_printf
+      PrintfString
   hs-source-dirs:
       src
       parser

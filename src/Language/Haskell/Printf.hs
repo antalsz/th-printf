@@ -23,6 +23,7 @@ module Language.Haskell.Printf (
   st,
   p,
   hp,
+  PrintfString()
 ) where
 
 import Control.Monad.IO.Class
@@ -43,7 +44,8 @@ reasons.
 
 @
 %c     :: 'Char'
-%s     :: 'String'
+%s     :: 'PrintfString' s => s -- String, lazy text, or strict text
+%S     :: 'String'
 %q     :: 'Data.Text.Lazy.Text' -- lazy text
 %Q     :: 'Data.Text.Text' -- strict text
 

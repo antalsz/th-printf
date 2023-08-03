@@ -14,9 +14,15 @@ import Test.Hspec
 main :: IO ()
 main = hspec $ describe "th-printf" $ do
   GeneratedSpec.spec
+  it "generic text" $ do
+    -- Test the generic %s specifier
+    [s|Hello, %s!|] "world" @?= "Hello, world!"
+    [s|Hello, %s!|] (S.pack "world") @?= "Hello, world!"
+    [s|Hello, %s!|] (L.pack "world") @?= "Hello, world!"
   it "text" $ do
     -- sanity checking that text can be rendered
     -- all the actual string formatting is in GeneratedSpec
+    [s|Hello, %S!|] "world" @?= "Hello, world!"
     [s|Hello, %Q!|] (S.pack "world") @?= "Hello, world!"
     [s|Hello, %q!|] (L.pack "world") @?= "Hello, world!"
   it "hexadecimal float" $ do

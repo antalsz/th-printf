@@ -1,3 +1,11 @@
+## 0.9.0-beta (2023-08-03)
+
+- New `st` quasiquoter that generates strict `Text` instead of lazy `Text`.
+- The `%s` specifier now accepts `String`s, strict `Text`, or lazy `Text`, as
+  appropriate.  The new `%S` format specifier accepts only `String`s.  The `%s`
+  specifier comes with a new `PrintfString` type class to categorize acceptable
+  input types, and provides a way for the end-user to instantiate it.
+
 ## 0.8.0 (2023-07-16)
 
 - Support for base >= 4.15 / GHC 9.

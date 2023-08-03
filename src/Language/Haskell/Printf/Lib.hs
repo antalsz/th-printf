@@ -5,6 +5,8 @@
 module Language.Haskell.Printf.Lib (
   toSplices,
   OutputType (..),
+  PrintfString (genTake, toPrintfString),
+  SomePrintfString (..),
 ) where
 
 import Data.Maybe
@@ -30,6 +32,7 @@ import Parser.Types hiding (
   lengthSpec,
   width,
  )
+import PrintfString
 
 data OutputType = OutputString | OutputText | OutputStrictText
   deriving (Show, Eq, Ord, Generic, Enum, Bounded)
@@ -92,7 +95,8 @@ extractExpr (Arg (FormatArg flags' width' precision' spec' lengthSpec')) = do
     Just (Given n') -> pure (Nothing, [|Just $(litE $ integerL n')|])
     Nothing -> pure (Nothing, [|Nothing|])
   formatter = case spec' of
-    's' -> [|Printers.printfString|]
+    's' -> [|Printers.printfGenericString|]
+    'S' -> [|Printers.printfString|]
     'q' -> [|Printers.printfLazyText|]
     'Q' -> [|Printers.printfStrictText|]
     '?' -> [|Printers.printfShow|]

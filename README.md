@@ -7,11 +7,10 @@ printf QuasiQuoters
 ```haskell
 import Language.Haskell.Printf
 
--- String interpolation
+-- String/Text interpolation
 [s|Hello, %s!|] "Jeff" -- "Hello, Jeff!"
-
--- Text interpolation
-[s|Hello, %q!|] (Data.Text.Lazy.pack "Jeff") -- "Hello, Jeff!"
+[s|Hello, %s!|] (Data.Text.pack "Jeff") -- "Hello, Jeff!"
+[s|Hello, %s!|] (Data.Text.Lazy.pack "Jeff") -- "Hello, Jeff!"
 
 -- Width specifiers
 [s|%010d|] 1977 -- "0000001977"

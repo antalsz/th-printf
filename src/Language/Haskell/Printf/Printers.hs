@@ -19,8 +19,19 @@ import Math.NumberTheory.Logarithms
 import Buf
 import NumUtils
 import qualified Parser.Types as P
+import PrintfString
 
 type Printer n buf = PrintfArg n -> Value buf
+
+printfGenericString :: (Buf buf, PrintfString str) => Printer str buf
+printfGenericString spec =
+  Value
+    { valArg = case prec spec of
+        Nothing -> genStr <$> spec
+        Just c -> genStr . genTake c <$> spec
+    , valPrefix = Nothing
+    , valSign = Nothing
+    }
 
 printfString :: (Buf buf) => Printer String buf
 printfString spec =
