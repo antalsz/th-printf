@@ -36,7 +36,7 @@ library
   exposed-modules:
       Language.Haskell.Printf
       Language.Haskell.Printf.Buffer
-      Language.Haskell.Printf.Lib
+      Language.Haskell.Printf.TH
       Language.Haskell.Printf.String
   other-modules:
       Language.Haskell.Printf.Geometry

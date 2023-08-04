@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Language.Haskell.Printf.Lib (
+module Language.Haskell.Printf.TH (
   toQuasiQuoter,
   toPrintf,
   toSplices,

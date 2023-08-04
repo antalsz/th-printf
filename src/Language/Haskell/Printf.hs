@@ -36,7 +36,7 @@ module Language.Haskell.Printf (
 import Control.Monad.IO.Class
 import qualified Data.Text as S
 import qualified Data.Text.Lazy as L
-import Language.Haskell.Printf.Lib
+import Language.Haskell.Printf.TH
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Quote
 
