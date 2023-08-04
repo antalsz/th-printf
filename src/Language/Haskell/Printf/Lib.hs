@@ -21,7 +21,7 @@ import Language.Haskell.PrintfArg
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import Buf (
+import Language.Haskell.Printf.Buffer (
   finalize,
  )
 import Control.Monad (mapAndUnzipM)
@@ -30,7 +30,7 @@ import Parser.Types hiding (
   lengthSpec,
   width,
  )
-import PrintfString
+import Language.Haskell.Printf.String
 
 data Parameterization = Unparameterized | Parameterized
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)

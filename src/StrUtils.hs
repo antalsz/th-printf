@@ -1,6 +1,6 @@
 module StrUtils (justifyLeft, justifyRight) where
 
-import Buf
+import Language.Haskell.Printf.Buffer
 
 justifyLeft :: (Buf a) => Int -> Char -> a -> a
 justifyLeft n c s

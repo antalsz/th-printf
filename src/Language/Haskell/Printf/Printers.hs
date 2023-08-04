@@ -16,10 +16,10 @@ import Language.Haskell.Printf.Geometry
 import Language.Haskell.PrintfArg
 import Math.NumberTheory.Logarithms
 
-import Buf
+import Language.Haskell.Printf.Buffer
 import NumUtils
 import qualified Parser.Types as P
-import PrintfString
+import Language.Haskell.Printf.String
 
 type Printer n buf = PrintfArg n -> Value buf
 

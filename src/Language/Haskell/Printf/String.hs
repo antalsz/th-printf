@@ -1,13 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
-module PrintfString (PrintfString (..), SomePrintfString (..)) where
+module Language.Haskell.Printf.String (PrintfString (..), SomePrintfString (..)) where
 
 import Data.String
 import qualified Data.Text as S
 import qualified Data.Text.Lazy as L
 
-import Buf (UnsizedBuf (lText, sText))
+import Language.Haskell.Printf.Buffer (UnsizedBuf (lText, sText))
 
 -- | The three string-like types that @%s@ natively understands.
 data SomePrintfString

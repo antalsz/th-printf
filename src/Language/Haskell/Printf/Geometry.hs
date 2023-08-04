@@ -15,7 +15,7 @@ import Data.Maybe
 import Language.Haskell.PrintfArg
 import Parser.Types (Adjustment (..))
 
-import Buf
+import Language.Haskell.Printf.Buffer
 import StrUtils
 
 data Value buf = Value

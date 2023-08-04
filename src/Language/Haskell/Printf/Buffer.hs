@@ -3,7 +3,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Buf (UnsizedBuf (..), Buf (..), Sized(..), Buffer, PrintfResult (..), PrintfResult1 (..)) where
+module Language.Haskell.Printf.Buffer (
+  UnsizedBuf (..),
+  Buf (..),
+  Sized (..),
+  Buffer,
+  PrintfResult (..),
+  PrintfResult1 (..)
+) where
 
 import Control.Monad.IO.Class
 import Data.Char (intToDigit)

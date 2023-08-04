@@ -35,9 +35,10 @@ flag werror
 library
   exposed-modules:
       Language.Haskell.Printf
+      Language.Haskell.Printf.Buffer
       Language.Haskell.Printf.Lib
+      Language.Haskell.Printf.String
   other-modules:
-      Buf
       Language.Haskell.Printf.Geometry
       Language.Haskell.Printf.Printers
       Language.Haskell.PrintfArg
@@ -46,7 +47,6 @@ library
       Parser
       Parser.Types
       Paths_th_printf
-      PrintfString
   hs-source-dirs:
       src
       parser

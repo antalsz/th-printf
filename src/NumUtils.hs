@@ -21,7 +21,7 @@ import Prelude hiding (
   (<>),
  )
 
-import Buf
+import Language.Haskell.Printf.Buffer
 import StrUtils
 
 showIntAtBase ::
