@@ -16,18 +16,16 @@ your input must be an instance of "Bounded".
 -}
 module Language.Haskell.Printf (
   -- * Format string quasiquoters
-  f,
-  f1,
-  s,
-  t,
-  st,
-  p,
-  hp,
+  printf,
+  printf1,
+  sprintf,
+  tprintf,
+  stprintf,
+  ltprintf,
+  pprintf,
+  fprintf,
   -- * Type classes
-  PrintfString(),
-  PrintfResult(),
-  PrintfResult1(..),
-  PrintfBuffer,
+  module Language.Haskell.Printf.ExportTypes,
   -- * Build your own quasiquoters
   qqPrintf,
   qqPrintf1,
@@ -40,11 +38,10 @@ import Language.Haskell.Printf.TH
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Quote
 
-import Language.Haskell.Printf.Result (PrintfBuffer, PrintfResult(), PrintfResult1(PrintfParameter))
-import Language.Haskell.Printf.String (PrintfString())
+import Language.Haskell.Printf.ExportTypes
 
 {- | @
-['s'|Hello, %s! (%d people greeted)|] :: ... -> 'String'
+['printf'|Hello, %s! (%d people greeted)|] :: 'PrintfResult' r => ... -> r
 @
 
 This formatter follows the guidelines listed
@@ -60,7 +57,7 @@ reasons.
 %Q     :: 'Data.Text.Text' -- strict text
 
 -- custom formatters
-%@     :: ... -> (a -> Buffer r) -> a .... -> r
+%@     :: ... -> (a -> 'PrintfBuffer' r) -> a .... -> r
 
 -- datatypes with Show instances
 %?     :: 'Show' a => a
@@ -82,43 +79,58 @@ reasons.
 %p     :: 'Foreign.Ptr.Ptr' a
 @
 -}
-s :: QuasiQuoter
-s = qqPrintf [t|String|]
+printf :: QuasiQuoter
+printf = toQuasiQuoter Unparameterized Nothing
 
--- | Behaves identically to 's', but produces lazy 'Data.Text.Lazy.Text'.
-t :: QuasiQuoter
-t = qqPrintf [t|L.Text|]
-
--- | Behaves identically to 's', but produces strict 'Data.Text.Text'.
-st :: QuasiQuoter
-st = qqPrintf [t|S.Text|]
-
-{- | Like 's', but prints the resulting string to @stdout@.
+{- | 'printf', but taking an extra argumenbt before the format parameters.  What
+this paramter does depends on the result type.
 
 @
-[p|Hello, %s! (%d people greeted)|] :: 'MonadIO' m => ... -> m ()
+['printf'|Hello, %s! (%d people greeted)|] :: 'PrintfResult1' r => 'PrintfParameter' r -> ... -> r
 @
 -}
-p :: QuasiQuoter
-p = qqPrintf [t|forall m. MonadIO m => m ()|]
+printf1 :: QuasiQuoter
+printf1 = toQuasiQuoter Parameterized Nothing
 
-{- | Like 'p', but takes as its first argument the 'System.IO.Handle' to print to.
+-- | 'printf' specialized to produce a 'String'
+sprintf :: QuasiQuoter
+sprintf = qqPrintf [t|String|]
+
+-- | 'printf' specialized to produce a strict 'Data.Text.Text'.
+tprintf :: QuasiQuoter
+tprintf = qqPrintf [t|S.Text|]
+
+-- | 'printf' specialized to produce a strict 'Data.Text.Text'.
+stprintf :: QuasiQuoter
+stprintf = qqPrintf [t|S.Text|]
+
+-- | 'printf' specialized to produce a lazy 'Data.Text.Lazy.Text'.
+ltprintf :: QuasiQuoter
+ltprintf = qqPrintf [t|L.Text|]
+
+{- | 'printf' specialized to print the result to @stdout@.
 
 @
-[hp|Hello, %s! (%d people greeted)|] :: 'MonadIO' m => 'System.IO.Handle' -> ... -> m ()
+[printf|Hello, %s! (%d people greeted)|] :: 'MonadIO' m => ... -> m ()
 @
 -}
-hp :: QuasiQuoter
-hp = qqPrintf1 [t|forall m. MonadIO m => m ()|]
+pprintf :: QuasiQuoter
+pprintf = qqPrintf [t|forall m. MonadIO m => m ()|]
 
-f :: QuasiQuoter
-f = toQuasiQuoter Unparameterized Nothing
+{- | 'printf1' specialized to print the result to the 'System.IO.Handle' it gets as
+its first argument.
 
-f1 :: QuasiQuoter
-f1 = toQuasiQuoter Parameterized Nothing
+@
+[fprintf|Hello, %s! (%d people greeted)|] :: 'MonadIO' m => 'System.IO.Handle' -> ... -> m ()
+@
+-}
+fprintf :: QuasiQuoter
+fprintf = qqPrintf1 [t|forall m. MonadIO m => m ()|]
 
+-- | Generate your own specialized 'printf' quasiquoter that produces a specific type.
 qqPrintf :: TypeQ -> QuasiQuoter
 qqPrintf = toQuasiQuoter Unparameterized . Just
 
+-- | Generate your own specialized 'printf1' quasiquoter that produces a specific type.
 qqPrintf1 :: TypeQ -> QuasiQuoter
 qqPrintf1 = toQuasiQuoter Parameterized . Just

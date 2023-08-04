@@ -39,6 +39,7 @@ library
       Language.Haskell.Printf.TH
       Language.Haskell.Printf.String
   other-modules:
+      Language.Haskell.Printf.ExportTypes
       Language.Haskell.Printf.Geometry
       Language.Haskell.Printf.Printers
       Language.Haskell.PrintfArg
