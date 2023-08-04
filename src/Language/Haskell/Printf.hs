@@ -23,15 +23,20 @@ module Language.Haskell.Printf (
   st,
   p,
   hp,
+  f,
+  f1,
+  printf,
+  printf1,
   PrintfString()
 ) where
 
 import Control.Monad.IO.Class
+import qualified Data.Text as S
+import qualified Data.Text.Lazy as L
 import Language.Haskell.Printf.Lib
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax
-import System.IO (hPutStr)
 
 {- | @
 ['s'|Hello, %s! (%d people greeted)|] :: ... -> 'String'
@@ -48,6 +53,9 @@ reasons.
 %S     :: 'String'
 %q     :: 'Data.Text.Lazy.Text' -- lazy text
 %Q     :: 'Data.Text.Text' -- strict text
+
+-- custom formatters
+%@     :: ... -> (a -> Buffer r) -> a .... -> r
 
 -- datatypes with Show instances
 %?     :: 'Show' a => a
@@ -70,21 +78,15 @@ reasons.
 @
 -}
 s :: QuasiQuoter
-s = quoter $ \s' -> do
-  (lhss, rhs) <- toSplices s' OutputString
-  return $ LamE lhss rhs
+s = printf [t|String|]
 
 -- | Behaves identically to 's', but produces lazy 'Data.Text.Lazy.Text'.
 t :: QuasiQuoter
-t = quoter $ \s' -> do
-  (lhss, rhs) <- toSplices s' OutputText
-  return $ LamE lhss rhs
+t = printf [t|L.Text|]
 
 -- | Behaves identically to 's', but produces strict 'Data.Text.Text'.
 st :: QuasiQuoter
-st = quoter $ \s' -> do
-  (lhss, rhs) <- toSplices s' OutputStrictText
-  return $ LamE lhss rhs
+st = printf [t|S.Text|]
 
 {- | Like 's', but prints the resulting string to @stdout@.
 
@@ -93,9 +95,7 @@ st = quoter $ \s' -> do
 @
 -}
 p :: QuasiQuoter
-p = quoter $ \s' -> do
-  (lhss, rhs) <- toSplices s' OutputString
-  lamE (map pure lhss) [|liftIO (putStr $(pure rhs))|]
+p = printf [t|forall m. MonadIO m => m ()|]
 
 {- | Like 'p', but takes as its first argument the 'System.IO.Handle' to print to.
 
@@ -104,16 +104,27 @@ p = quoter $ \s' -> do
 @
 -}
 hp :: QuasiQuoter
-hp = quoter $ \s' -> do
-  (lhss, rhs) <- toSplices s' OutputString
-  h <- newName "h"
-  lamE (varP h : map pure lhss) [|liftIO (hPutStr $(varE h) $(pure rhs))|]
+hp = printf1 [t|forall m. MonadIO m => m ()|]
 
-quoter :: (String -> ExpQ) -> QuasiQuoter
-quoter e =
+f :: QuasiQuoter
+f = printf' Unparameterized Nothing
+
+f1 :: QuasiQuoter
+f1 = printf' Parameterized Nothing
+
+printf' :: Parameterization -> Maybe TypeQ -> QuasiQuoter
+printf' pr mty =
   QuasiQuoter
-    { quoteExp = e
+    { quoteExp = \s' -> do
+        (lhss, rhs) <- toSplices s' pr mty
+        return $ LamE lhss rhs
     , quotePat = error "this quoter cannot be used in a pattern context"
     , quoteType = error "this quoter cannot be used in a type context"
     , quoteDec = error "this quoter cannot be used in a declaration context"
     }
+
+printf :: TypeQ -> QuasiQuoter
+printf = printf' Unparameterized . Just
+
+printf1 :: TypeQ -> QuasiQuoter
+printf1 = printf' Parameterized . Just

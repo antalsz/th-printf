@@ -1,4 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module NumUtils (showIntAtBase, formatRealFloatAlt, formatHexFloat) where
 
@@ -7,6 +8,7 @@ import Data.Char
 import Data.Foldable
 import Data.Ord
 import Data.Semigroup ((<>))
+import Data.String
 import Data.Tuple
 import GHC.Float (
   FFFormat (..),
@@ -44,8 +46,8 @@ formatRealFloatAlt ::
   a ->
   buf
 formatRealFloatAlt fmt decs forceDot upper x
-  | isNaN x = str "NaN"
-  | isInfinite x = str $ if x < 0 then "-Infinity" else "Infinity"
+  | isNaN x = "NaN"
+  | isInfinite x = if x < 0 then "-Infinity" else "Infinity"
   | x < 0 || isNegativeZero x =
     cons
       '-'
@@ -61,15 +63,15 @@ formatRealFloatAlt fmt decs forceDot upper x
     | null part =
       fromDigits False whole <> (if forceDot then singleton '.' else mempty)
     | null whole =
-      str "0." <> fromDigits False part
+      "0." <> fromDigits False part
     | otherwise =
       fromDigits False whole <> singleton '.' <> fromDigits False part
    where
     (whole, part) =
       uncurry (flip splitAt) (toRoundedDigits decs (digs, exp) fullRounding)
   doFmt FFExponent ([0], _) _
-    | forceDot = str "0.e+00"
-    | otherwise = str "0e+00"
+    | forceDot = "0.e+00"
+    | otherwise = "0e+00"
   doFmt FFExponent (digs, exp) fullRounding =
     shownDigs <> cons eChar shownExponent
    where
@@ -118,7 +120,7 @@ formatHexFloat decs alt upper x = doFmt (floatToDigits 2 x)
     | upper = 'P'
     | otherwise = 'p'
   doFmt ([], _) = undefined
-  doFmt ([0], 0) = cons '0' (cons pChar (str "+0"))
+  doFmt ([0], 0) = cons '0' (cons pChar "+0")
   -- possible ghcjs bug - some floats are encoded as ([0,...], exp + 1)
   -- but the first digit should never be 0 unless the input is 0.0
   doFmt (0 : bits, exp) = doFmt (bits, exp - 1)
@@ -128,7 +130,7 @@ formatHexFloat decs alt upper x = doFmt (floatToDigits 2 x)
         <> fromDigits upper hexDigits
         <> singleton pChar
         <> (if exp > 0 then singleton '+' else mempty)
-        <> str (show (exp - 1 + overflow))
+        <> fromString (show (exp - 1 + overflow))
    where
     hexDigits' = go bits
     (overflow, hexDigits) = case decs of

@@ -3,10 +3,11 @@
 
 module PrintfString (PrintfString (..), SomePrintfString (..)) where
 
+import Data.String
 import qualified Data.Text as S
 import qualified Data.Text.Lazy as L
 
-import Buf (Buf (lText, sText, str))
+import Buf (UnsizedBuf (lText, sText))
 
 -- | The three string-like types that @%s@ natively understands.
 data SomePrintfString
@@ -17,9 +18,9 @@ data SomePrintfString
 
 -- | Type class for string-like types that can be printed with the @%s@ format specifier.
 class PrintfString str where
-  genStr :: Buf buf => str -> buf
+  genStr :: UnsizedBuf buf => str -> buf
   genStr gs = case toPrintfString gs of
-    PString s -> str s
+    PString s -> fromString s
     PStrictText st -> sText st
     PLazyText lt -> lText lt
 
@@ -38,7 +39,7 @@ instance PrintfString SomePrintfString where
   toPrintfString = id
 
 instance PrintfString String where
-  genStr = str
+  genStr = fromString
   genTake = take
   toPrintfString = PString
 

@@ -23,6 +23,14 @@ import PrintfString
 
 type Printer n buf = PrintfArg n -> Value buf
 
+printfApply :: (Buf buf) => (a -> buf) -> Printer a buf
+printfApply fmt spec =
+  Value
+    { valArg = fmt <$> spec
+    , valPrefix = Nothing
+    , valSign = Nothing
+    }
+
 printfGenericString :: (Buf buf, PrintfString str) => Printer str buf
 printfGenericString spec =
   Value
@@ -37,8 +45,8 @@ printfString :: (Buf buf) => Printer String buf
 printfString spec =
   Value
     { valArg = case prec spec of
-        Nothing -> str <$> spec
-        Just c -> str . take c <$> spec
+        Nothing -> fromString <$> spec
+        Just c -> fromString . take c <$> spec
     , valPrefix = Nothing
     , valSign = Nothing
     }
@@ -66,6 +74,14 @@ printfLazyText spec =
 printfShow :: (Buf buf, Show a) => Printer a buf
 printfShow spec = printfString (fromString . show <$> spec)
 
+printfBuf :: (Buf buf) => Printer buf buf
+printfBuf spec =
+  Value
+    { valArg = spec
+    , valPrefix = Nothing
+    , valSign = Nothing
+    }
+
 printfChar :: (Buf buf) => Printer Char buf
 printfChar spec =
   Value
@@ -87,7 +103,7 @@ printfPtr spec =
           , fieldSpec = 'p'
           , value = showIntAtBase 16 intToDigit (ptrToWordPtr $ value spec)
           }
-    , valPrefix = Just (str "0x")
+    , valPrefix = Just "0x"
     , valSign = Nothing
     }
 

@@ -50,6 +50,7 @@ normalizeAndWarn (Arg f) = (Arg a, b)
  where
   (_, a, b) = runRWS (warnLength f >> go (spec f)) () f
   go c | c `elem` "aAeEfFgGxXo" = return ()
+  go c | c `elem` "b@" = warnLJust >> warnSign >> warnPrefix >> warnZero >> warnSpace
   go c | c `elem` "csSqQ?" = warnSign >> warnPrefix >> warnZero >> warnSpace
   go c | c `elem` "diu" = warnPrefix
   go 'p' = warnSign >> warnPrefix >> warnZero
@@ -73,6 +74,7 @@ normalizeAndWarn (Arg f) = (Arg a, b)
             ++ [c]
             ++ "` specifier"
         ]
+  warnLJust = warnFlag adjustment_ (Just LeftJustified) Nothing '-'
   warnSign = warnFlag signed_ True False '+'
   warnPrefix = warnFlag prefixed_ True False '#'
   warnSpace = warnFlag spaced_ True False ' '
@@ -84,7 +86,7 @@ normalizeAndWarn (Arg f) = (Arg a, b)
            | x <- "fFeEgGaA"
            , y <- ["hh", "h", "l", "ll", "j", "z", "t"]
            ]
-        ++ [(x, y) | x <- "csSqQ", y <- ["hh", "h", "ll", "j", "z", "t", "L"]]
+        ++ [(x, y) | x <- "csSqQ?bQ", y <- ["hh", "h", "ll", "j", "z", "t", "L"]]
         ++ map ('p',) ["hh", "h", "l", "ll", "j", "z", "t", "L"]
   warnLength FormatArg{spec, lengthSpec = Just l}
     | (spec, show l) `S.member` phonyLengthSpec =
@@ -101,7 +103,7 @@ flagSet :: CharSet
 flagSet = fromList "-+ #0"
 
 specSet :: CharSet
-specSet = fromList "diuoxXfFeEaAgGpcsSQq?"
+specSet = fromList "diuoxXfFeEaAgGpcsSQq?b@"
 
 lengthSpecifiers :: [(String, LengthSpecifier)]
 lengthSpecifiers =
@@ -144,6 +146,7 @@ fmtArg = do
       else pure $ toFlagSet flagSet'
   width <- numArg <?> "width"
   precision <- optionMaybe (char '.' *> numArg) <?> "precision"
+               -- XXX warn about width/precision
   lengthSpec <-
     optionMaybe $ choice $ Prelude.map (\(a, b) -> b <$ string a) lengthSpecifiers
   spec <- oneOfSet specSet <?> "valid specifier"

@@ -1,17 +1,18 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 
 module Language.Haskell.Printf.Lib (
   toSplices,
-  OutputType (..),
+  Parameterization(..),
   PrintfString (genTake, toPrintfString),
   SomePrintfString (..),
 ) where
 
 import Data.Maybe
 import Data.String (fromString)
-import GHC.Generics (Generic)
+import GHC.Generics (Generic())
 import Language.Haskell.Printf.Geometry (
   formatOne,
  )
@@ -21,9 +22,6 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import Buf (
-  SizedBuilder,
-  SizedStr,
-  SizedStrictBuilder,
   finalize,
  )
 import Control.Monad (mapAndUnzipM)
@@ -34,8 +32,8 @@ import Parser.Types hiding (
  )
 import PrintfString
 
-data OutputType = OutputString | OutputText | OutputStrictText
-  deriving (Show, Eq, Ord, Generic, Enum, Bounded)
+data Parameterization = Unparameterized | Parameterized
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
 
 {- | Takes a format string as input and produces a tuple @(args, outputExpr)@.
 
@@ -46,36 +44,63 @@ string.
 Use if you wish to leverage @th-printf@ in conjunction with, for example, an existing
 logging library.
 -}
-toSplices :: String -> OutputType -> Q ([Pat], Exp)
-toSplices s' ot = case parseStr s' of
+toSplices :: String -> Parameterization -> Maybe TypeQ -> Q ([Pat], Exp)
+toSplices s' pr motype = case parseStr s' of
   Left x -> fail $ show x
   Right (y, warns) -> do
     mapM_ (qReport False) (concat warns)
     (lhss, rhss) <- mapAndUnzipM extractExpr y
-    rhss' <-
-      appE
-        [|finalize|]
-        (sigE (foldr1 (\x y' -> infixApp x [|(<>)|] y') rhss) otype)
-    return (map VarP $ concat lhss, rhss')
- where
-  otype = case ot of
-    OutputString -> [t|SizedStr|]
-    OutputText -> [t|SizedBuilder|]
-    OutputStrictText -> [t|SizedStrictBuilder|]
+    (prvar, finalizer) <- case pr of
+      Unparameterized -> pure ([], [|finalize|])
+      Parameterized -> do
+        param <- newName "fmtParam"
+        pure ([param], [|finalizeWith $(varE param)|])
+    let rhss' = [|$finalizer ($(foldr1 (\x y' -> [|$x <> $y'|]) rhss))|]
+    rhssTy <- case motype of
+      Just otype -> [|$rhss' :: $otype|]
+      Nothing    -> rhss'
+    return (map VarP $ concat (prvar : lhss), rhssTy)
+
+formatter :: Char -> Q (Maybe Name, ExpQ)
+formatter '@' = do
+  fmt <- newName "formatFn"
+  pure (Just fmt, [|Printers.printfApply $(varE fmt)|])
+formatter c = pure . (Nothing,) $ case c of
+  's' -> [|Printers.printfGenericString|]
+  'S' -> [|Printers.printfString|]
+  'q' -> [|Printers.printfLazyText|]
+  'Q' -> [|Printers.printfStrictText|]
+  '?' -> [|Printers.printfShow|]
+  'b' -> [|Printers.printfBuf|]
+  'd' -> [|Printers.printfDecimal|]
+  'i' -> [|Printers.printfDecimal|]
+  'p' -> [|Printers.printfPtr|]
+  'c' -> [|Printers.printfChar|]
+  'u' -> [|Printers.printfUnsigned|]
+  'x' -> [|Printers.printfHex False|]
+  'X' -> [|Printers.printfHex True|]
+  'o' -> [|Printers.printfOctal|]
+  'f' -> [|Printers.printfFloating False|]
+  'F' -> [|Printers.printfFloating True|]
+  'e' -> [|Printers.printfScientific False|]
+  'E' -> [|Printers.printfScientific True|]
+  'g' -> [|Printers.printfGeneric False|]
+  'G' -> [|Printers.printfGeneric True|]
+  'a' -> [|Printers.printfFloatHex False|]
+  'A' -> [|Printers.printfFloatHex True|]
+  _   -> error $ "Unknown formatting character " ++ show c
 
 extractExpr :: Atom -> Q ([Name], ExpQ)
 extractExpr (Str s') = return ([], [|fromString $(stringE s')|])
 extractExpr (Arg (FormatArg flags' width' precision' spec' lengthSpec')) = do
   (warg, wexp) <- extractArgs width'
   (parg, pexp) <- extractArgs precision'
+  (farg, fexp) <- formatter spec'
   varg <- newName "arg"
   return
-    ( catMaybes [warg, parg, Just varg]
-    , appE
-        [|formatOne|]
-        ( appE
-            formatter
-            [|
+    ( catMaybes [warg, parg, farg, Just varg]
+    , [| formatOne
+           ($fexp
               PrintfArg
                 { flagSet = $(lift flags')
                 , width = $(wexp)
@@ -83,9 +108,8 @@ extractExpr (Arg (FormatArg flags' width' precision' spec' lengthSpec')) = do
                 , value = $(varE varg)
                 , lengthSpec = $(lift lengthSpec')
                 , fieldSpec = $(lift spec')
-                }
-              |]
-        )
+                })
+      |]
     )
  where
   extractArgs n = case n of
@@ -94,26 +118,3 @@ extractExpr (Arg (FormatArg flags' width' precision' spec' lengthSpec')) = do
       pure (Just a, [|Just (fromInteger (fromIntegral $(varE a)))|])
     Just (Given n') -> pure (Nothing, [|Just $(litE $ integerL n')|])
     Nothing -> pure (Nothing, [|Nothing|])
-  formatter = case spec' of
-    's' -> [|Printers.printfGenericString|]
-    'S' -> [|Printers.printfString|]
-    'q' -> [|Printers.printfLazyText|]
-    'Q' -> [|Printers.printfStrictText|]
-    '?' -> [|Printers.printfShow|]
-    'd' -> [|Printers.printfDecimal|]
-    'i' -> [|Printers.printfDecimal|]
-    'p' -> [|Printers.printfPtr|]
-    'c' -> [|Printers.printfChar|]
-    'u' -> [|Printers.printfUnsigned|]
-    'x' -> [|Printers.printfHex False|]
-    'X' -> [|Printers.printfHex True|]
-    'o' -> [|Printers.printfOctal|]
-    'f' -> [|Printers.printfFloating False|]
-    'F' -> [|Printers.printfFloating True|]
-    'e' -> [|Printers.printfScientific False|]
-    'E' -> [|Printers.printfScientific True|]
-    'g' -> [|Printers.printfGeneric False|]
-    'G' -> [|Printers.printfGeneric True|]
-    'a' -> [|Printers.printfFloatHex False|]
-    'A' -> [|Printers.printfFloatHex True|]
-    _ -> undefined
