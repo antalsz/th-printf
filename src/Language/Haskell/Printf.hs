@@ -1,6 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 {- | "Text.Printf" is a useful module, but due to the typeclass hacks it uses, it can
@@ -18,16 +15,22 @@ Thus, any time you want to print a number using the unsigned, octal, or hex spec
 your input must be an instance of "Bounded".
 -}
 module Language.Haskell.Printf (
+  -- * Format string quasiquoters
+  f,
+  f1,
   s,
   t,
   st,
   p,
   hp,
-  f,
-  f1,
-  printf,
-  printf1,
-  PrintfString()
+  -- * Type classes
+  PrintfString(),
+  PrintfResult(),
+  PrintfResult1(..),
+  PrintfBuffer,
+  -- * Build your own quasiquoters
+  qqPrintf,
+  qqPrintf1,
 ) where
 
 import Control.Monad.IO.Class
@@ -36,7 +39,9 @@ import qualified Data.Text.Lazy as L
 import Language.Haskell.Printf.Lib
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Quote
-import Language.Haskell.TH.Syntax
+
+import Language.Haskell.Printf.Result (PrintfBuffer, PrintfResult(), PrintfResult1(PrintfParameter))
+import Language.Haskell.Printf.String (PrintfString())
 
 {- | @
 ['s'|Hello, %s! (%d people greeted)|] :: ... -> 'String'
@@ -78,15 +83,15 @@ reasons.
 @
 -}
 s :: QuasiQuoter
-s = printf [t|String|]
+s = qqPrintf [t|String|]
 
 -- | Behaves identically to 's', but produces lazy 'Data.Text.Lazy.Text'.
 t :: QuasiQuoter
-t = printf [t|L.Text|]
+t = qqPrintf [t|L.Text|]
 
 -- | Behaves identically to 's', but produces strict 'Data.Text.Text'.
 st :: QuasiQuoter
-st = printf [t|S.Text|]
+st = qqPrintf [t|S.Text|]
 
 {- | Like 's', but prints the resulting string to @stdout@.
 
@@ -95,7 +100,7 @@ st = printf [t|S.Text|]
 @
 -}
 p :: QuasiQuoter
-p = printf [t|forall m. MonadIO m => m ()|]
+p = qqPrintf [t|forall m. MonadIO m => m ()|]
 
 {- | Like 'p', but takes as its first argument the 'System.IO.Handle' to print to.
 
@@ -104,27 +109,16 @@ p = printf [t|forall m. MonadIO m => m ()|]
 @
 -}
 hp :: QuasiQuoter
-hp = printf1 [t|forall m. MonadIO m => m ()|]
+hp = qqPrintf1 [t|forall m. MonadIO m => m ()|]
 
 f :: QuasiQuoter
-f = printf' Unparameterized Nothing
+f = toQuasiQuoter Unparameterized Nothing
 
 f1 :: QuasiQuoter
-f1 = printf' Parameterized Nothing
+f1 = toQuasiQuoter Parameterized Nothing
 
-printf' :: Parameterization -> Maybe TypeQ -> QuasiQuoter
-printf' pr mty =
-  QuasiQuoter
-    { quoteExp = \s' -> do
-        (lhss, rhs) <- toSplices s' pr mty
-        return $ LamE lhss rhs
-    , quotePat = error "this quoter cannot be used in a pattern context"
-    , quoteType = error "this quoter cannot be used in a type context"
-    , quoteDec = error "this quoter cannot be used in a declaration context"
-    }
+qqPrintf :: TypeQ -> QuasiQuoter
+qqPrintf = toQuasiQuoter Unparameterized . Just
 
-printf :: TypeQ -> QuasiQuoter
-printf = printf' Unparameterized . Just
-
-printf1 :: TypeQ -> QuasiQuoter
-printf1 = printf' Parameterized . Just
+qqPrintf1 :: TypeQ -> QuasiQuoter
+qqPrintf1 = toQuasiQuoter Parameterized . Just

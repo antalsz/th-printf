@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Language.Haskell.Printf.Geometry (
@@ -25,23 +24,23 @@ data Value buf = Value
   }
   deriving (Show)
 
-sign' :: (Num n, Ord n, Buf buf) => PrintfArg n -> Maybe buf
+sign' :: (Num n, Ord n, UnsizedBuffer buf) => PrintfArg n -> Maybe buf
 sign' pf
   | value pf < 0 = Just (singleton '-')
   | spaced pf = Just (singleton ' ')
   | signed pf = Just (singleton '+')
   | otherwise = Nothing
 
-padDecimal :: (Buf buf, Eq v, Num v) => PrintfArg v -> buf -> buf
+padDecimal :: (Buffer buf, Eq v, Num v) => PrintfArg v -> buf -> buf
 padDecimal spec
   | prec spec == Just 0 && value spec == 0 = const mempty
   | otherwise = maybe id (`justifyRight` '0') (prec spec)
 
-prefix :: (Num n, Eq n, Buf buf) => buf -> PrintfArg n -> Maybe buf
+prefix :: (Num n, Eq n, UnsizedBuffer buf) => buf -> PrintfArg n -> Maybe buf
 prefix s pf = guard (prefixed pf && value pf /= 0) >> Just s
 
 fromPrintfArg ::
-  (Buf buf) =>
+  (UnsizedBuffer buf) =>
   (n -> buf) ->
   (PrintfArg n -> Maybe buf) ->
   (PrintfArg n -> Maybe buf) ->
@@ -49,7 +48,7 @@ fromPrintfArg ::
   Value buf
 fromPrintfArg f b c a = Value (f <$> a) (b a) (c a)
 
-formatOne :: (Buf buf) => Value buf -> buf
+formatOne :: (Buffer buf) => Value buf -> buf
 formatOne Value{..}
   | Nothing <- width valArg = prefix' <> text
   | Just w <- width valArg = case adjustment valArg of
@@ -59,7 +58,7 @@ formatOne Value{..}
     Just LeftJustified -> justifyLeft w ' ' (prefix' <> text)
     _ -> justify' w (prefix' <> text)
  where
-  isn'tDecimal = fieldSpec valArg `notElem` ("diouxX" :: String)
+  isn'tDecimal = fieldSpec valArg `notElem` "diouxX"
   justify' n
     | n < 0 = justifyLeft (abs n) ' '
     | otherwise = justifyRight n ' '

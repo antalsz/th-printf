@@ -1,13 +1,10 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 
 module Language.Haskell.Printf.Lib (
+  toQuasiQuoter,
+  toPrintf,
   toSplices,
   Parameterization(..),
-  PrintfString (genTake, toPrintfString),
-  SomePrintfString (..),
 ) where
 
 import Data.Maybe
@@ -19,18 +16,16 @@ import Language.Haskell.Printf.Geometry (
 import qualified Language.Haskell.Printf.Printers as Printers
 import Language.Haskell.PrintfArg
 import Language.Haskell.TH
+import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax
 
-import Language.Haskell.Printf.Buffer (
-  finalize,
- )
+import Language.Haskell.Printf.Result
 import Control.Monad (mapAndUnzipM)
 import Parser (parseStr)
 import Parser.Types hiding (
   lengthSpec,
   width,
  )
-import Language.Haskell.Printf.String
 
 data Parameterization = Unparameterized | Parameterized
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic)
@@ -44,8 +39,8 @@ string.
 Use if you wish to leverage @th-printf@ in conjunction with, for example, an existing
 logging library.
 -}
-toSplices :: String -> Parameterization -> Maybe TypeQ -> Q ([Pat], Exp)
-toSplices s' pr motype = case parseStr s' of
+toSplices :: Parameterization -> Maybe TypeQ -> String -> Q ([Pat], Exp)
+toSplices pr motype s' = case parseStr s' of
   Left x -> fail $ show x
   Right (y, warns) -> do
     mapM_ (qReport False) (concat warns)
@@ -55,11 +50,28 @@ toSplices s' pr motype = case parseStr s' of
       Parameterized -> do
         param <- newName "fmtParam"
         pure ([param], [|finalizeWith $(varE param)|])
-    let rhss' = [|$finalizer ($(foldr1 (\x y' -> [|$x <> $y'|]) rhss))|]
+    let rhss' = [|$finalizer $(mconcatExpQ rhss)|]
     rhssTy <- case motype of
       Just otype -> [|$rhss' :: $otype|]
       Nothing    -> rhss'
     return (map VarP $ concat (prvar : lhss), rhssTy)
+
+-- Avoid an extra @... <> mempty@ through an initial case analysis
+mconcatExpQ :: [ExpQ] -> ExpQ
+mconcatExpQ []       = [|mempty|]
+mconcatExpQ xs@(_:_) = foldr1 (\x y -> [|$x <> $y|]) xs
+
+toPrintf :: Parameterization -> Maybe TypeQ -> String -> ExpQ
+toPrintf pr mty s' = uncurry LamE <$> toSplices pr mty s'
+
+toQuasiQuoter :: Parameterization -> Maybe TypeQ -> QuasiQuoter
+toQuasiQuoter pr mty =
+  QuasiQuoter
+    { quoteExp = toPrintf pr mty
+    , quotePat = error "this quoter cannot be used in a pattern context"
+    , quoteType = error "this quoter cannot be used in a type context"
+    , quoteDec = error "this quoter cannot be used in a declaration context"
+    }
 
 formatter :: Char -> Q (Maybe Name, ExpQ)
 formatter '@' = do

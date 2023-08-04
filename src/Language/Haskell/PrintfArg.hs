@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-
 module Language.Haskell.PrintfArg (
   PrintfArg (..),
   adjustment,

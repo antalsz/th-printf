@@ -1,4 +1,3 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module NumUtils (showIntAtBase, formatRealFloatAlt, formatHexFloat) where
@@ -25,7 +24,7 @@ import Language.Haskell.Printf.Buffer
 import StrUtils
 
 showIntAtBase ::
-  (Buf buf, Show a, Integral a) => a -> (Int -> Char) -> a -> buf
+  (UnsizedBuffer buf, Show a, Integral a) => a -> (Int -> Char) -> a -> buf
 showIntAtBase base toChr n0
   | base <= 1 = error "unsupported base"
   | n0 < 0 = error $ "negative number " ++ show n0
@@ -38,7 +37,7 @@ showIntAtBase base toChr n0
     r' = cons (toChr (fromIntegral d)) r
 
 formatRealFloatAlt ::
-  (Buf buf, RealFloat a) =>
+  (Buffer buf, RealFloat a) =>
   FFFormat ->
   Maybe Int ->
   Bool ->
@@ -108,12 +107,12 @@ toRoundedDigits (Just prec) (digs, exp) fullRounding = (digs', exp + overflow)
       (if fullRounding && prec > exp then min (length digs) prec else prec + exp)
       digs
 
-fromDigits :: (Buf buf) => Bool -> [Int] -> buf
+fromDigits :: (UnsizedBuffer buf) => Bool -> [Int] -> buf
 fromDigits upper =
   foldr (cons . (if upper then toUpper else id) . intToDigit) mempty
 
 formatHexFloat ::
-  (Buf buf, RealFloat a) => Maybe Int -> Bool -> Bool -> a -> buf
+  (UnsizedBuffer buf, RealFloat a) => Maybe Int -> Bool -> Bool -> a -> buf
 formatHexFloat decs alt upper x = doFmt (floatToDigits 2 x)
  where
   pChar

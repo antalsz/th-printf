@@ -1,7 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Language.Haskell.Printf.Printers where
 
@@ -23,7 +20,7 @@ import Language.Haskell.Printf.String
 
 type Printer n buf = PrintfArg n -> Value buf
 
-printfApply :: (Buf buf) => (a -> buf) -> Printer a buf
+printfApply :: (UnsizedBuffer buf) => (a -> buf) -> Printer a buf
 printfApply fmt spec =
   Value
     { valArg = fmt <$> spec
@@ -31,17 +28,17 @@ printfApply fmt spec =
     , valSign = Nothing
     }
 
-printfGenericString :: (Buf buf, PrintfString str) => Printer str buf
+printfGenericString :: (Buffer buf, PrintfString str) => Printer str buf
 printfGenericString spec =
   Value
     { valArg = case prec spec of
-        Nothing -> genStr <$> spec
-        Just c -> genStr . genTake c <$> spec
+        Nothing -> fromPrintfString <$> spec
+        Just c -> fromPrintfString . takePrintfString c <$> spec
     , valPrefix = Nothing
     , valSign = Nothing
     }
 
-printfString :: (Buf buf) => Printer String buf
+printfString :: (UnsizedBuffer buf) => Printer String buf
 printfString spec =
   Value
     { valArg = case prec spec of
@@ -51,7 +48,7 @@ printfString spec =
     , valSign = Nothing
     }
 
-printfStrictText :: (Buf buf) => Printer S.Text buf
+printfStrictText :: (UnsizedBuffer buf) => Printer S.Text buf
 printfStrictText spec =
   Value
     { valArg = case prec spec of
@@ -61,7 +58,7 @@ printfStrictText spec =
     , valSign = Nothing
     }
 
-printfLazyText :: (Buf buf) => Printer L.Text buf
+printfLazyText :: (UnsizedBuffer buf) => Printer L.Text buf
 printfLazyText spec =
   Value
     { valArg = case prec spec of
@@ -71,10 +68,10 @@ printfLazyText spec =
     , valSign = Nothing
     }
 
-printfShow :: (Buf buf, Show a) => Printer a buf
+printfShow :: (UnsizedBuffer buf, Show a) => Printer a buf
 printfShow spec = printfString (fromString . show <$> spec)
 
-printfBuf :: (Buf buf) => Printer buf buf
+printfBuf :: (UnsizedBuffer buf) => Printer buf buf
 printfBuf spec =
   Value
     { valArg = spec
@@ -82,7 +79,7 @@ printfBuf spec =
     , valSign = Nothing
     }
 
-printfChar :: (Buf buf) => Printer Char buf
+printfChar :: (UnsizedBuffer buf) => Printer Char buf
 printfChar spec =
   Value
     { valArg = singleton <$> spec
@@ -91,7 +88,7 @@ printfChar spec =
     }
 
 {-# ANN printfPtr ("HLint: ignore Use showHex" :: String) #-}
-printfPtr :: (Buf buf) => Printer (Ptr a) buf
+printfPtr :: (UnsizedBuffer buf) => Printer (Ptr a) buf
 printfPtr spec =
   Value
     { valArg =
@@ -107,7 +104,7 @@ printfPtr spec =
     , valSign = Nothing
     }
 
-printfDecimal :: (Buf buf, Show n, Integral n) => PrintfArg n -> Value buf
+printfDecimal :: (Buffer buf, Show n, Integral n) => PrintfArg n -> Value buf
 printfDecimal spec =
   Value
     { valArg = padDecimal spec . showIntAtBase 10 intToDigit . abs <$> spec
@@ -116,7 +113,7 @@ printfDecimal spec =
     }
 
 fmtUnsigned ::
-  (Bounded a, Integral a, Buf buf) =>
+  (Bounded a, Integral a, Buffer buf) =>
   (Integer -> buf) ->
   (PrintfArg a -> Maybe buf) ->
   Printer a buf
@@ -127,12 +124,12 @@ fmtUnsigned shower p spec =
     , valSign = Nothing
     }
 
-printfHex :: (Bounded a, Integral a, Buf buf, IsString buf) => Bool -> Printer a buf
+printfHex :: (Bounded a, Integral a, Buffer buf, IsString buf) => Bool -> Printer a buf
 printfHex b = fmtUnsigned showHex (prefix (if b then "0X" else "0x"))
  where
   showHex = showIntAtBase 16 ((if b then toUpper else id) . intToDigit)
 
-printfUnsigned :: (Bounded a, Integral a, Buf buf) => Printer a buf
+printfUnsigned :: (Bounded a, Integral a, Buffer buf) => Printer a buf
 printfUnsigned = fmtUnsigned (showIntAtBase 10 intToDigit) (const Nothing)
 
 -- printing octal is really annoying.  consider
@@ -156,7 +153,7 @@ printfUnsigned = fmtUnsigned (showIntAtBase 10 intToDigit) (const Nothing)
 -- in octal, when combining prefix and padding, the prefix
 -- must eat the first padding char
 {-# ANN printfOctal ("HLint: ignore Use showOct" :: String) #-}
-printfOctal :: (Buf buf, IsString buf, Bounded n, Integral n) => PrintfArg n -> Value buf
+printfOctal :: (Buffer buf, IsString buf, Bounded n, Integral n) => PrintfArg n -> Value buf
 printfOctal spec =
   fmtUnsigned
     (showIntAtBase 8 intToDigit)
@@ -166,7 +163,7 @@ printfOctal spec =
   expectedWidth = integerLogBase 8 (max 1 $ clampUnsigned $ value spec) + 1
   shouldUnpad = prefixed spec && fromMaybe 0 (prec spec) > expectedWidth
 
-printfFloating :: (Buf buf, RealFloat n) => Bool -> PrintfArg n -> Value buf
+printfFloating :: (Buffer buf, RealFloat n) => Bool -> PrintfArg n -> Value buf
 printfFloating upperFlag spec =
   Value
     { valArg = showFloat . abs <$> spec
@@ -180,7 +177,7 @@ printfFloating upperFlag spec =
     _ -> Nothing
   showFloat = formatRealFloatAlt FFFixed precision (prefixed spec) upperFlag
 
-printfScientific :: (Buf buf, RealFloat n) => Bool -> PrintfArg n -> Value buf
+printfScientific :: (Buffer buf, RealFloat n) => Bool -> PrintfArg n -> Value buf
 printfScientific upperFlag spec =
   Value
     { valArg = showSci . abs <$> spec
@@ -195,7 +192,7 @@ printfScientific upperFlag spec =
       (prefixed spec)
       upperFlag
 
-printfGeneric :: (Buf buf, RealFloat n) => Bool -> PrintfArg n -> Value buf
+printfGeneric :: (Buffer buf, RealFloat n) => Bool -> PrintfArg n -> Value buf
 printfGeneric upperFlag spec =
   Value
     { valArg = showSci . abs <$> spec
@@ -210,7 +207,7 @@ printfGeneric upperFlag spec =
       (prefixed spec)
       upperFlag
 
-printfFloatHex :: (Buf buf, RealFloat n, IsString buf) => Bool -> PrintfArg n -> Value buf
+printfFloatHex :: (UnsizedBuffer buf, RealFloat n, IsString buf) => Bool -> PrintfArg n -> Value buf
 printfFloatHex upperFlag spec =
   Value
     { valArg = showHexFloat . abs <$> spec
