@@ -57,6 +57,7 @@ library
                 , containers
                 , dlist
                 , integer-logarithms
+                , megaparsec >= 9.4.1
                 , microlens-platform
                 , mtl
                 , parsec
