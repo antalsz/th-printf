@@ -52,20 +52,19 @@ library
       src
       parser
   ghc-options: -Wall
-  build-depends:
-      base >=4.12 && <5
-    , charset
-    , containers
-    , dlist
-    , integer-logarithms
-    , microlens-platform
-    , mtl
-    , parsec
-    , semigroups
-    , template-haskell
-    , text
-    , th-lift
-    , transformers
+  build-depends:  base >=4.12 && <5
+                , charset
+                , containers
+                , dlist
+                , integer-logarithms
+                , microlens-platform
+                , mtl
+                , parsec
+                , semigroups
+                , template-haskell
+                , text
+                , th-lift
+                , transformers
   default-language: GHC2021
   if flag(werror)
     ghc-options: -Werror
