@@ -6,15 +6,13 @@ module Language.Printf.FormatString where
 
 import Data.String
 
-data PositiveSign = Plus | Space
-                  deriving (Eq, Ord, Show, Read, Enum, Bounded)
-
 data Flag = LeftJustify
-          | Signed PositiveSign
+          | PositivePlus
+          | PositiveSpace
           | Alternative
           | ZeroPadding
           | ThousandsSeparators -- POSIX
-          deriving (Eq, Ord, Show, Read)
+          deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 data Argument = InOrder
               | Positional Word -- POSIX
@@ -36,7 +34,7 @@ data IntWidthPrecision = Exact | FastestAtLeast
 data DecimalWidth = D32 | D64 | D128
                   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
-data Length = Char
+data Length = Byte -- "Char" in C
             | Short
             | Long
             | LongLong
@@ -67,12 +65,6 @@ data FloatingStyle = DecimalDigits
                    | HexadecimalExponent
                    deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
-data StringType = Generic
-                | HaskellString -- HS extension
-                | StrictText -- HS extension
-                | LazyText -- HS extension
-                deriving (Eq, Ord, Show, Read)
-
 data FunctionType = Simple | Full
                   -- HS extension
                   deriving (Eq, Ord, Show, Read, Enum, Bounded)
@@ -80,9 +72,10 @@ data FunctionType = Simple | Full
 data Specifier = Integer IntegerStyle
                | FloatingPoint FloatingStyle Case
                | Character
-               | String StringType
+               | String
                | Pointer
                -- No %n, which would be StoreOutputLength
+               | SpecificString -- HS extension
                | Formattable -- HS extension
                | Showable -- HS extension
                | Function FunctionType -- HS extension

@@ -5,7 +5,7 @@
 module Language.Printf.Parse where
 
 import Control.Applicative hiding (many)
-import Data.Char hiding (GeneralCategory(..))
+import Data.Char
 import Data.String
 import Data.Foldable
 import Data.Proxy
@@ -47,8 +47,8 @@ flag = singleCharacter "flag"
   [
   ---- C standard ----
     ('-',  LeftJustify)
-  , ('+',  Signed Plus)
-  , (' ',  Signed Space)
+  , ('+',  PositivePlus)
+  , (' ',  PositiveSpace)
   , ('#',  Alternative)
   , ('0',  ZeroPadding)
   ---- POSIX ----
@@ -76,18 +76,18 @@ parseSpecifier = singleCharacter "specifier"
   , ('a', FloatingPoint HexadecimalExponent Lowercase)
   , ('A', FloatingPoint HexadecimalExponent Uppercase)
   , ('c', Character)
-  , ('s', String Generic)
+  , ('s', String)
   , ('p', Pointer)
   , ('%', Percent)
     -- Omitted: %n
   ---- Extensions ----
   -- Strings
-  , ('S', String HaskellString)
+  , ('S', SpecificString)
   -- Haskell
   , ('?', Showable)
   -- User-extensible formatting
-  , ('@', Formattable)
-  , ('v', Function Simple)
+  , ('@', Formattable) -- Could split into one for a -> buffer and one for (flags, length, a) -> buffer
+  , ('v', Function Simple) -- Lowercase letters are reserved by the C standard; could rework
   , ('V', Function Full)
   -- Buffer
   , ('|', Buffer) -- could change
@@ -106,7 +106,7 @@ parsePrecision = Precision <$ char '.' <*> intParameter <?> "precision"
 
 parseLengthModifier :: MonadParsecString e s m => m Length
 parseLengthModifier = label "length modifier" $
-  Char                        <$  string "hh"                      <|>
+  Byte                        <$  string "hh"                      <|>
   LongLong                    <$  string "ll"                      <|>
   Short                       <$  char 'h'                         <|>
   Long                        <$  char 'l'                         <|>

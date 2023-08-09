@@ -56,6 +56,7 @@ library
                 , charset
                 , containers
                 , dlist
+                , enummapset
                 , integer-logarithms
                 , megaparsec >= 9.4.1
                 , microlens-platform
