@@ -64,3 +64,9 @@ data Extensions = CStandard
 -- `%=x`, but `%=R16u`.  I like it!  So the `R` part is genuinely a new
 -- component, like `1$` – the "base" component.
 -- Stretch goal: floating point.
+
+-- Okay, but `~` is weird as a flag, because it changes the types.  New
+-- proposal: just use `I`.  `%x` is the same as `%R16u` and `%X` is the same as
+-- `%R16U`; the old `%~x` becomes `%R16i` and the old `%~X` becomes `%R16I`.
+-- Downsides: `%~x` is much shorter.  Realistically, though, who cares?  `%Nx`
+-- isn't that much better, and is hard to read anyway.

@@ -64,19 +64,18 @@ flag = singleCharacter "flag"
   ---- POSIX ----
   , ('\'', ThousandsSeparators, POSIXStandard)
   ---- Haskell ----
-  , ('=',  RadixPrefix,               Extensions)
-  , ('~',  SignedNondecimalSpecifier, Extensions)
+  , ('=',  RadixPrefix, Extensions)
   ]
 
 parseSpecifier :: Parser e s m => m Specifier
 parseSpecifier = singleCharacter "specifier"
   [
   ---- C(++) standard ----
-    ('d', Integer SignedDecimal,                       CStandard)
-  , ('i', Integer SignedDecimal,                       CStandard)
+    ('i', Integer . Signed $ SGeneral Lowercase,       CStandard) -- The i/d split is an extension, cf. scanf
+  , ('d', Integer $ Signed Decimal,                    CStandard)
   , ('b', Integer . Unsigned $ Binary Lowercase,       CStandard)
   , ('B', Integer . Unsigned $ Binary Uppercase,       CStandard)
-  , ('u', Integer $ Unsigned Decimal,                  CStandard)
+  , ('u', Integer $ Unsigned $ UGeneral Lowercase,     CStandard)
   , ('o', Integer $ Unsigned Octal,                    CStandard)
   , ('x', Integer . Unsigned $ Hexadecimal Lowercase,  CStandard)
   , ('X', Integer . Unsigned $ Hexadecimal Uppercase,  CStandard)
@@ -94,22 +93,28 @@ parseSpecifier = singleCharacter "specifier"
   , ('%', Percent,                                     CStandard)
     -- Omitted: %n
   ---- Extensions ----
+  -- Uppercase generic integers for alternative-radix printing
+  , ('I', Integer . Signed   $ SGeneral Uppercase, Extensions)
+  , ('U', Integer . Unsigned $ UGeneral Uppercase, Extensions)
   -- Strings
-  , ('S', SpecificString,  Extensions)
+  , ('S', SpecificString, Extensions)
   -- Haskell
-  , ('?', Showable,        Extensions)
+  , ('?', Showable, Extensions)
   -- User-extensible formatting
   , ('@', Formattable,     Extensions) -- Could split: one for a -> buffer and one for (flags, length, a) -> buffer
   , ('v', Function Simple, Extensions) -- Lowercase letters are reserved by the C standard; could rework
   , ('V', Function Full,   Extensions)
   -- Buffer
-  , ('|', Buffer,          Extensions) -- could change
+  , ('|', Buffer, Extensions) -- could change
   ]
 
-intParameter :: Parser e s m => m IntParameter
-intParameter =
-  Fixed    <$> positiveInteger <|>
+parameter :: Parser e s m => m a -> m (Parameter a)
+parameter p =
+  Fixed    <$> p <|>
   Argument <$  char '*' <*> option InOrder (Positional <$> positionalArgument)
+
+intParameter :: Parser e s m => m (Parameter Word)
+intParameter = parameter positiveInteger
 
 parseWidth :: Parser e s m => m Width
 parseWidth = Width <$> intParameter <?> "width"
@@ -120,27 +125,27 @@ parsePrecision = Precision <$ char '.' <*> intParameter <?> "precision"
 -- All in the C standard, for now
 parseSimpleLength :: Parser e s m => m SimpleLength
 parseSimpleLength = label "simple length modifier" $
-  Byte                        <$  string "hh"                      <|>
-  LongLong                    <$  string "ll"                      <|>
-  Short                       <$  char 'h'                         <|>
-  Long                        <$  char 'l'                         <|>
-  IntMax                      <$  char 'j'                         <|>
-  Size                        <$  char 'z'                         <|>
-  PtrDiff                     <$  char 't'                         <|>
-  IntWithWidth FastestAtLeast <$> (string "wf" *> positiveInteger) <|>
-  IntWithWidth Exact          <$> (char 'w' *> positiveInteger)    <|>
-  LongDouble                  <$  char 'L'                         <|>
-  DecimalFloat D32            <$  char 'H'                         <|>
-  DecimalFloat D128           <$  string "DD"                      <|>
-  DecimalFloat D64            <$  char 'D'
+  Byte                 <$  string "hh"                      <|>
+  LongLong             <$  string "ll"                      <|>
+  Short                <$  char 'h'                         <|>
+  Long                 <$  char 'l'                         <|>
+  IntMax               <$  char 'j'                         <|>
+  Size                 <$  char 'z'                         <|>
+  PtrDiff              <$  char 't'                         <|>
+  IntWithWidth Fastest <$> (string "wf" *> positiveInteger) <|>
+  IntWithWidth Exact   <$> (char 'w' *> positiveInteger)    <|>
+  LongDouble           <$  char 'L'                         <|>
+  DecimalFloat D32     <$  char 'H'                         <|>
+  DecimalFloat D128    <$  string "DD"                      <|>
+  DecimalFloat D64     <$  char 'D'
 
 parseLength :: Parser e s m => m Length
 parseLength =   ifAtLeast Extensions (CLength <$ char 'C' <*> optional parseSimpleLength)
             <|> HsLength <$> parseSimpleLength
             <?> "length modifier"
 
-parseRadix :: Parser e s m => m Radix
-parseRadix = ifAtLeast Extensions (toRadixErr <$ char 'R' <*> validRadix <?> "radix") where
+parseRadix :: Parser e s m => m (Parameter Radix)
+parseRadix = ifAtLeast Extensions (char 'R' *> parameter (toRadixErr <$> validRadix) <?> "radix") where
   validRadix :: Parser e s m => m Int
   validRadix = label "number from 1 to 36" do
     let digit = satisfy isDigit
@@ -173,14 +178,6 @@ parseFormatString :: Parser e s m => m (FormatString (Tokens s))
 parseFormatString = FormatString <$> many formatStringChunk <?> "format string"
 
 {-
-  Might support extension: %hf for float
-
-  Might support extension: %Ld for Integer (but nothing for `Int`?)
-
-  Might support extension: %hS for strict ByteString
-
-  Might support extension: %hhS for lazy ByteString
-
   NOT SUPPORTING from POSIX (XSI: X/Open System Interfaces), since we're fully
   unicode-aware (and so I can steal %S for my own use):
     %C = %lc

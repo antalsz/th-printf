@@ -13,24 +13,23 @@ data Flag = LeftJustify
           | ZeroPadding
           | ThousandsSeparators -- POSIX
           | RadixPrefix -- Haskell
-          | SignedNondecimalSpecifier -- Haskell
           deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 data Argument = InOrder
               | Positional Word -- POSIX
               deriving (Eq, Ord, Show, Read)
 
-data IntParameter = Fixed Word
-                  | Argument Argument
-                  deriving (Eq, Ord, Show, Read)
+data Parameter a = Fixed a
+                 | Argument Argument
+                 deriving (Eq, Ord, Show, Read, Functor)
 
-newtype Width = Width IntParameter
+newtype Width = Width (Parameter Word)
   deriving (Eq, Ord, Show, Read)
 
-newtype Precision = Precision IntParameter
+newtype Precision = Precision (Parameter Word)
   deriving (Eq, Ord, Show, Read)
 
-data IntWidthPrecision = Exact | FastestAtLeast
+data IntWidthPrecision = Exact | Fastest
                        deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 data DecimalWidth = D32 | D64 | D128
@@ -67,15 +66,19 @@ fromRadix = (+ 1) . fromEnum @Radix
 data Case = Lowercase | Uppercase
           deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
-data IntegerStyle = SignedDecimal
-                  | Unsigned IntegerBase
+data IntegerStyle = Signed SignedIntegerBase
+                  | Unsigned UnsignedIntegerBase
                   deriving (Eq, Ord, Show, Read)
 
-data IntegerBase = Binary Case -- C24
-                 | Decimal
-                 | Octal
-                 | Hexadecimal Case
-                 deriving (Eq, Ord, Show, Read)
+data SignedIntegerBase = Decimal
+                       | SGeneral Case -- This distinction is HS extension, as is Uppercase
+                       deriving (Eq, Ord, Show, Read)
+
+data UnsignedIntegerBase = Binary Case -- C24
+                         | UGeneral Case -- Uppercase is HS extension
+                         | Octal
+                         | Hexadecimal Case
+                         deriving (Eq, Ord, Show, Read)
 
 data FloatingStyle = DecimalDigits
                    | DecimalExponent
@@ -107,7 +110,7 @@ data FormatSpecifier = FormatSpecifier
   , width          :: Maybe Width
   , precision      :: Maybe Precision
   , lengthModifier :: Maybe Length
-  , radix          :: Maybe Radix -- HS extension
+  , radix          :: Maybe (Parameter Radix) -- HS extension
   , specifier      :: Specifier
   }
   deriving (Eq, Ord, Show, Read)
