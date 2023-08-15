@@ -52,7 +52,9 @@ library
       src
       parser
   ghc-options: -Wall
-  build-depends:  base >=4.12 && <5
+  build-depends:  QuickCheck >= 2.14.3
+                , array >= 0.5.4.0
+                , base >=4.12 && <5
                 , charset
                 , containers
                 , dlist
