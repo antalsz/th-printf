@@ -29,13 +29,13 @@ type family (++) (xs :: [k]) (ys :: [k]) :: [k] where
 
 data Chunkable = ChunkForbidden | ChunkAllowed deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
-data RawFormatString (chunkable :: Chunkable) (buf :: Type) (cs :: [Constraint]) (ts :: [Type]) where
+data RawFormatString :: Chunkable -> Type -> [Constraint] -> [Type] -> Type where
   Empty     :: RawFormatString 'ChunkAllowed buf '[] '[]
   Chunk     :: buf
             -> RawFormatString 'ChunkAllowed   buf cs ts
             -> RawFormatString 'ChunkForbidden buf cs ts
   Specifier :: Specifier buf scs sts
-            -> RawFormatString chunkable'    buf cs          ts
+            -> RawFormatString chunkable     buf cs          ts
             -> RawFormatString 'ChunkAllowed buf (scs ++ cs) (sts ++ ts)
 
 data FormatString (buf :: Type) (cs :: [Constraint]) (ts :: [Type]) =
