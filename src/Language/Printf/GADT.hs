@@ -9,8 +9,6 @@ module Language.Printf.GADT where
 import Control.Monad.IO.Class
 import Data.Kind
 
-data Toggle = S | L
-
 data Specifier (buf :: Type) (cs :: [Constraint]) (ts :: [Type]) where
   -- Integer        :: Integer  cs i -> Specifier buf cs               '[i]
   -- FloatingPoint  :: Floating cs r -> Specifier buf cs               '[r]
